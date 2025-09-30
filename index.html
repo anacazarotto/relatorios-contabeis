@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Balancete</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Sistema de Balancete</h1>
+            <p>Sistema para lançamento e validação de balancetes contábeis</p>
+            <div id="system-status" class="system-status">🔄 Inicializando sistema...</div>
+        </header>
+
+        <main>
+            <!-- Navegação por Abas -->
+            <nav class="tabs-navigation">
+                <button class="tab-button active" data-tab="balancete">📊 Balancete</button>
+                <button class="tab-button" data-tab="encargos">👥 Cálculo de Salário</button>
+                <button class="tab-button" data-tab="rescisao">💼 Cálculo de Rescisão</button>
+                <button class="tab-button" data-tab="dashboard">📈 Dashboard Salários/Rescisão</button>
+                <button class="tab-button" data-tab="dashboard-impostos">💸 Dashboard Impostos</button>
+            </nav>
+            <!-- Aba Dashboard Impostos -->
+            <section id="tab-dashboard-impostos" class="tab-content">
+                <section class="dashboard-section">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <h2>Dashboard de Impostos</h2>
+                        <button type="button" onclick="baixarPDFDashboardImpostos()" class="gerar-relatorio-btn exportar-dashboard-btn">📄 Baixar PDF</button>
+                    </div>
+                    <div class="dashboard-filtros" style="margin-bottom: 18px; display: flex; align-items: center; gap: 16px;">
+                        <label for="dashboardImpostosMesFiltro">Filtrar por mês:</label>
+                        <select id="dashboardImpostosMesFiltro" onchange="preencherDashboardImpostos()">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                    <div id="dashboard-content-impostos">
+                        <p class="empty-state">Nenhum dado disponível. Realize lançamentos de impostos para visualizar aqui.</p>
+                    </div>
+                </section>
+            </section>
+            <section id="tab-dashboard" class="tab-content">
+                <section class="dashboard-section">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <h2>Dashboard de Salários e Rescisão</h2>
+                        <button type="button" onclick="baixarPDFDashboardSalarios()" class="gerar-relatorio-btn exportar-dashboard-btn">📄 Baixar PDF</button>
+                    </div>
+                    <div class="dashboard-filtros" style="margin-bottom: 18px; display: flex; align-items: center; gap: 16px;">
+                        <label for="dashboardMesFiltro">Filtrar por mês:</label>
+                        <select id="dashboardMesFiltro" onchange="preencherDashboardMain()">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                    <div id="dashboard-content-main">
+                        <p class="empty-state">Nenhum dado disponível. Realize lançamentos de encargos ou rescisão para visualizar aqui.</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Aba Balancete -->
+            <section id="tab-balancete" class="tab-content active">
+                <!-- Formulário para novo balancete -->
+                <section class="balancete-form">
+                <h2>Novo Balancete</h2>
+                <form id="balanceteForm">
+                    <div class="form-group">
+                        <label for="data">Data do Balancete:</label>
+                        <input type="date" id="data" required>
+                    </div>
+
+                    <div class="lancamentos-section">
+                        <h3>Lançamentos</h3>
+                        <div id="lancamentos-container">
+                            <div class="lancamento-item">
+                                <div class="lancamento-main">
+                                    <select class="tipo" required>
+                                        <option value="">Tipo</option>
+                                        <option value="debito">Débito</option>
+                                        <option value="credito">Crédito</option>
+                                    </select>
+                                    <div class="conta-selector" style="display: none;">
+                                        <input type="text" class="conta-input" placeholder="Digite para buscar conta..." autocomplete="off">
+                                        <div class="sugestoes-container" style="display: none;">
+                                            <div class="sugestoes-lista"></div>
+                                        </div>
+                                        <input type="hidden" class="conta-selecionada">
+                                    </div>
+                                    <input type="text" placeholder="Valor (ex: 1500,50)" class="valor" required>
+                                    <button type="button" class="remove-lancamento"
+                                        onclick="removerLancamento(this)">❌</button>
+                                </div>
+                                <hr class="descricao-separator">
+                                <div class="descricao-container">
+                                    <input type="text" placeholder="Descrição do lançamento (opcional)" class="descricao">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" id="addLancamento" onclick="adicionarLancamento()">➕ Adicionar
+                            Lançamento</button>
+                    </div>
+
+                    <div class="balance-info">
+                        <div class="totals">
+                            <span>Total Débitos: R$ <span id="totalDebitos">0.00</span></span>
+                            <span>Total Créditos: R$ <span id="totalCreditos">0.00</span></span>
+                            <span class="balance-status" id="balanceStatus">Diferença: R$ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" onclick="calcularBalance()">🧮 Calcular Balanço</button>
+                        <button type="submit" id="submitBtn" disabled>💾 Lançar Balancete</button>
+                        <button type="button" onclick="limparFormulario()">🗑️ Limpar</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Histórico de balancetes -->
+            <section class="historico-section">
+                <h2>Histórico de Balancetes</h2>
+                <div class="stats">
+                    <span>Total de balancetes: <strong id="totalBalancetes">0</strong></span>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" onclick="abrirPopupRelatorios()" class="gerar-relatorio-btn">📊 Gerar Relatório</button>
+                        <button onclick="exportarTodosPDF()" class="exportar-todos-btn">📄 Exportar Todos em PDF</button>
+                        <button onclick="limparCache()" class="clear-cache-btn">🗑️ Limpar Cache</button>
+                    </div>
+                </div>
+                <div id="historico-container">
+                    <p class="empty-state">Nenhum balancete lançado ainda.</p>
+                </div>
+            </section>
+            </section>
+
+            <!-- Aba Cálculo de Encargos -->
+            <section id="tab-encargos" class="tab-content">
+                <section class="encargos-form">
+                    <h2>Cálculo de Encargos Trabalhistas</h2>
+                    <form id="encargosForm">
+                        <div class="funcionario-dados">
+                            <div class="form-group">
+                                <label for="nomeFuncionario">Nome do Funcionário:</label>
+                                <input type="text" id="nomeFuncionario" placeholder="Nome completo" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="salarioBruto">Salário Bruto Mensal:</label>
+                                <input type="text" id="salarioBruto" placeholder="R$ 0,00" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="dataAdmissao">Data de Admissão:</label>
+                                <input type="date" id="dataAdmissao" required>
+                            </div>
+                        </div>
+
+                        <div class="parametros-encargos">
+                            <h3>Parâmetros dos Encargos (%)</h3>
+                            <div class="parametros-grid">
+                                <div class="form-group">
+                                    <label for="inssPatronal">INSS Patronal:</label>
+                                    <input type="number" id="inssPatronal" value="20" step="0.1" min="0" max="100">
+                                    <small>Padrão: 20%</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fgts">FGTS:</label>
+                                    <input type="number" id="fgts" value="8" step="0.1" min="0" max="100" readonly>
+                                    <small>Fixo: 8%</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rat">RAT (Risco):</label>
+                                    <input type="number" id="rat" value="2" step="0.1" min="0" max="100">
+                                    <small>1% a 3% conforme risco</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="terceiros">Sistema S (Terceiros):</label>
+                                    <input type="number" id="terceiros" value="5.8" step="0.1" min="0" max="100">
+                                    <small>5% a 6% por setor</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" onclick="calcularEncargos()">🧮 Calcular Encargos</button>
+                            <button type="button" id="btnGerarLancamentos" onclick="gerarLancamentos()" disabled>📊 Gerar Lançamentos</button>
+                            <button type="button" onclick="limparEncargos()">🗑️ Limpar</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Resultado dos Cálculos -->
+                <section class="resultado-encargos">
+                    <h3>Resultado dos Cálculos</h3>
+                    <div id="resultado-container" class="resultado-grid">
+                        <p class="empty-state">Preencha os dados e clique em "Calcular Encargos"</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Aba Cálculo de Rescisão -->
+            <section id="tab-rescisao" class="tab-content">
+                <section class="rescisao-form">
+                    <h2>Cálculo de Rescisão Trabalhista</h2>
+                    <form id="rescisaoForm">
+                        <div class="funcionario-dados-rescisao">
+                            <div class="form-group">
+                                <label for="nomeFuncionarioRescisao">Nome do Funcionário:</label>
+                                <input type="text" id="nomeFuncionarioRescisao" placeholder="Nome completo" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="salarioRescisao">Último Salário:</label>
+                                <input type="text" id="salarioRescisao" placeholder="R$ 0,00" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="dataAdmissaoRescisao">Data de Admissão:</label>
+                                <input type="date" id="dataAdmissaoRescisao" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="dataRescisao">Data da Rescisão:</label>
+                                <input type="date" id="dataRescisao" required>
+                            </div>
+                        </div>
+
+                        <div class="tipo-rescisao">
+                            <h3>Tipo de Rescisão</h3>
+                            <div class="tipo-rescisao-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoRescisao" value="demissao-sem-justa-causa" checked>
+                                    <span>Demissão sem justa causa</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoRescisao" value="demissao-justa-causa">
+                                    <span>Demissão por justa causa</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoRescisao" value="pedido-demissao">
+                                    <span>Pedido de demissão</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoRescisao" value="acordo-mutuo">
+                                    <span>Acordo mútuo</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoRescisao" value="termino-contrato">
+                                    <span>Término de contrato</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="informacoes-adicionais">
+                            <h3>Informações Adicionais</h3>
+                            <div class="info-grid">
+                                <div class="form-group">
+                                    <label for="avisoPrevio">Aviso Prévio (dias):</label>
+                                    <input type="number" id="avisoPrevio" value="30" min="0" max="90">
+                                    <small>Padrão: 30 dias</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ferias">Férias Vencidas (dias):</label>
+                                    <input type="number" id="ferias" value="0" min="0" max="30">
+                                    <small>Dias de férias não gozadas</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="feriasProporcionais">Férias Proporcionais:</label>
+                                    <input type="checkbox" id="feriasProporcionais" checked>
+                                    <small>Calcular proporcionalmente</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="decimoTerceiro">13º Proporcional:</label>
+                                    <input type="checkbox" id="decimoTerceiro" checked>
+                                    <small>Calcular proporcionalmente</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="multa40">Multa 40% FGTS:</label>
+                                    <input type="checkbox" id="multa40" checked>
+                                    <small>Demissão sem justa causa</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="seguroDesemprego">Direito ao Seguro Desemprego:</label>
+                                    <input type="checkbox" id="seguroDesemprego">
+                                    <small>Conforme legislação</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" onclick="calcularRescisao()">🧮 Calcular Rescisão</button>
+                            <button type="button" onclick="gerarPDFRescisao()">📄 Gerar PDF</button>
+                            <button type="button" onclick="gerarLancamentosRescisao()">📊 Gerar Lançamentos</button>
+                            <button type="button" onclick="limparRescisao()">🗑️ Limpar</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Resultado dos Cálculos de Rescisão -->
+                <section class="resultado-rescisao">
+                    <h3>Resultado dos Cálculos de Rescisão</h3>
+                    <div id="resultado-rescisao-container" class="resultado-grid">
+                        <p class="empty-state">Preencha os dados e clique em "Calcular Rescisão"</p>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <!-- Popup de Relatórios -->
+    <div id="popupRelatorios" class="popup-overlay" style="display: none;">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h3>Gerar Relatório</h3>
+                <button onclick="fecharPopupRelatorios()" class="btn-fechar">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="filtros-relatorio">
+                    <div class="filtro-grupo">
+                        <label for="mesRelatorio">Período:</label>
+                        <select id="mesRelatorio">
+                            <option value="todos">Todos os períodos</option>
+                            <option value="2025-01">Janeiro 2025</option>
+                            <option value="2025-02">Fevereiro 2025</option>
+                            <option value="2025-03">Março 2025</option>
+                            <option value="2025-04">Abril 2025</option>
+                            <option value="2025-05">Maio 2025</option>
+                            <option value="2025-06">Junho 2025</option>
+                            <option value="2025-07">Julho 2025</option>
+                            <option value="2025-08">Agosto 2025</option>
+                            <option value="2025-09">Setembro 2025</option>
+                            <option value="2025-10">Outubro 2025</option>
+                            <option value="2025-11">Novembro 2025</option>
+                            <option value="2025-12">Dezembro 2025</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="dataEspecifica">Data específica (para relatório diário):</label>
+                        <input type="date" id="dataEspecifica">
+                    </div>
+                </div>
+                <div class="opcoes-relatorio">
+                    <button onclick="gerarRelatorio('diario')" class="opcao-btn">
+                        📅 Relatório Diário
+                        <small>Balancetes da data selecionada</small>
+                    </button>
+                    <button onclick="gerarRelatorio('mensal')" class="opcao-btn">
+                        📊 Relatório Mensal
+                        <small>Consolidado do período selecionado</small>
+                    </button>
+                    <button onclick="gerarRelatorio('funcionario')" class="opcao-btn">
+                        👥 Relatório Funcionários
+                        <small>INSS, FGTS, IRRF do período</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+<script>
+// Habilita o botão Gerar Lançamentos apenas se houver resultado de encargos
+function verificarResultadoEncargos() {
+    const btn = document.getElementById('btnGerarLancamentos');
+    const resultado = document.getElementById('resultado-container');
+    if (!btn || !resultado) return;
+    // Se existe algum resultado diferente do estado vazio
+    const temResultado = resultado && resultado.innerText.trim() && !resultado.innerText.includes('Preencha os dados');
+    btn.disabled = !temResultado;
+}
+// Chamar após calcular encargos
+const btnCalcular = document.querySelector('button[onclick="calcularEncargos()"]');
+if (btnCalcular) {
+    btnCalcular.addEventListener('click', function() {
+        setTimeout(verificarResultadoEncargos, 200); // Pequeno delay para DOM atualizar
+    });
+}
+// Chamar ao limpar
+const btnLimpar = document.querySelector('button[onclick="limparEncargos()"]');
+if (btnLimpar) {
+    btnLimpar.addEventListener('click', function() {
+        setTimeout(verificarResultadoEncargos, 200);
+    });
+}
+</script>
+</body>
+
+</html>
