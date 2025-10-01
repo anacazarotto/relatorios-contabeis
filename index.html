@@ -22,39 +22,120 @@
                 <button class="tab-button active" data-tab="balancete">📊 Balancete</button>
                 <button class="tab-button" data-tab="encargos">👥 Cálculo de Salário</button>
                 <button class="tab-button" data-tab="rescisao">💼 Cálculo de Rescisão</button>
+                <button class="tab-button" data-tab="impostos">💸 Cadastro de Impostos</button>
                 <button class="tab-button" data-tab="dashboard">📈 Dashboard Salários/Rescisão</button>
                 <button class="tab-button" data-tab="dashboard-impostos">💸 Dashboard Impostos</button>
             </nav>
             <!-- Aba Dashboard Impostos -->
             <section id="tab-dashboard-impostos" class="tab-content">
+                <!-- Dashboard de Impostos -->
                 <section class="dashboard-section">
-                    <div style="display: flex; align-items: center; gap: 16px;">
-                        <h2>Dashboard de Impostos</h2>
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                        <h2>📊 Dashboard de Impostos</h2>
                         <button type="button" onclick="baixarPDFDashboardImpostos()" class="gerar-relatorio-btn exportar-dashboard-btn">📄 Baixar PDF</button>
                     </div>
+                    
                     <div class="dashboard-filtros" style="margin-bottom: 18px; display: flex; align-items: center; gap: 16px;">
                         <label for="dashboardImpostosMesFiltro">Filtrar por mês:</label>
                         <select id="dashboardImpostosMesFiltro" onchange="preencherDashboardImpostos()">
                             <option value="todos">Todos</option>
                         </select>
                     </div>
+                    
                     <div id="dashboard-content-impostos">
                         <p class="empty-state">Nenhum dado disponível. Realize lançamentos de impostos para visualizar aqui.</p>
                     </div>
                 </section>
             </section>
+
+            <!-- Aba Cadastro de Impostos -->
+            <section id="tab-impostos" class="tab-content">
+                <!-- Formulário para cadastro de impostos -->
+                <section class="impostos-form">
+                    <h2>💸 Cadastro de Impostos</h2>
+                    <p>Cadastre os impostos para serem lançados automaticamente no balancete</p>
+                    
+                    <form id="impostosForm">
+                        <div class="impostos-dados">
+                            <div class="form-group">
+                                <label for="tipoImposto">Tipo de Imposto:</label>
+                                <div class="custom-select-container">
+                                    <select id="tipoImposto" class="custom-select" required>
+                                        <option value="" data-icon="📋">Selecione o imposto</option>
+                                        <option value="PIS/PASEP" data-icon="🏛️" data-color="#3498db">PIS/PASEP - Programa Integração Social</option>
+                                        <option value="COFINS" data-icon="🏦" data-color="#e74c3c">COFINS - Contrib. Financiamento Seguridade</option>
+                                        <option value="IRRF" data-icon="💰" data-color="#f39c12">IRRF - Imposto de Renda Retido na Fonte</option>
+                                        <option value="IR" data-icon="🏛️" data-color="#27ae60">IR - Imposto de Renda</option>
+                                        <option value="CS" data-icon="🏢" data-color="#9b59b6">CS - Contribuição Social sobre Lucro</option>
+                                        <option value="ISS" data-icon="🏪" data-color="#e67e22">ISS - Imposto sobre Serviços</option>
+                                        <option value="ICMS" data-icon="🚚" data-color="#1abc9c">ICMS - Imposto sobre Circulação</option>
+                                        <option value="IPI" data-icon="🏭" data-color="#34495e">IPI - Imposto sobre Produtos Industrializados</option>
+                                        <option value="Outros" data-icon="📊" data-color="#95a5a6">Outros Impostos e Taxas</option>
+                                    </select>
+                                    <div class="select-arrow">▼</div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="valorImposto">Valor do Imposto:</label>
+                                <input type="text" id="valorImposto" placeholder="R$ 0,00" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="competenciaImposto">Competência (Mês/Ano):</label>
+                                <input type="month" id="competenciaImposto" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="vencimentoImposto">Data de Vencimento:</label>
+                                <input type="date" id="vencimentoImposto" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="descricaoImposto">Descrição (opcional):</label>
+                                <input type="text" id="descricaoImposto" placeholder="Descrição adicional do imposto">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" onclick="calcularImposto()">🧮 Calcular</button>
+                            <button type="button" id="btnLancarImposto" onclick="lancarImposto()" disabled>📊 Lançar no Balancete</button>
+                            <button type="button" onclick="limparImpostos()">🗑️ Limpar</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Resultado do Cálculo -->
+                <section class="resultado-impostos">
+                    <h3>📋 Resultado do Cálculo</h3>
+                    <div id="resultado-imposto-container" class="resultado-grid">
+                        <p class="empty-state">Preencha os dados e clique em "Calcular"</p>
+                    </div>
+                </section>
+
+                <!-- Histórico de Impostos -->
+                <section class="historico-impostos">
+                    <h3>📊 Histórico de Impostos</h3>
+                    <div id="historico-impostos-container">
+                        <p class="empty-state">Nenhum imposto cadastrado ainda.</p>
+                    </div>
+                </section>
+            </section>
             <section id="tab-dashboard" class="tab-content">
+                <!-- Dashboard de Salários e Rescisão -->
                 <section class="dashboard-section">
-                    <div style="display: flex; align-items: center; gap: 16px;">
-                        <h2>Dashboard de Salários e Rescisão</h2>
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                        <h2>📈 Dashboard de Salários e Rescisão</h2>
                         <button type="button" onclick="baixarPDFDashboardSalarios()" class="gerar-relatorio-btn exportar-dashboard-btn">📄 Baixar PDF</button>
                     </div>
+                    
                     <div class="dashboard-filtros" style="margin-bottom: 18px; display: flex; align-items: center; gap: 16px;">
                         <label for="dashboardMesFiltro">Filtrar por mês:</label>
                         <select id="dashboardMesFiltro" onchange="preencherDashboardMain()">
                             <option value="todos">Todos</option>
                         </select>
                     </div>
+                    
                     <div id="dashboard-content-main">
                         <p class="empty-state">Nenhum dado disponível. Realize lançamentos de encargos ou rescisão para visualizar aqui.</p>
                     </div>
@@ -138,8 +219,9 @@
 
             <!-- Aba Cálculo de Encargos -->
             <section id="tab-encargos" class="tab-content">
+                <!-- Formulário para cálculo de encargos -->
                 <section class="encargos-form">
-                    <h2>Cálculo de Encargos Trabalhistas</h2>
+                    <h2>👥 Cálculo de Encargos Trabalhistas</h2>
                     <form id="encargosForm">
                         <div class="funcionario-dados">
                             <div class="form-group">
@@ -192,7 +274,7 @@
 
                 <!-- Resultado dos Cálculos -->
                 <section class="resultado-encargos">
-                    <h3>Resultado dos Cálculos</h3>
+                    <h3>📊 Resultado dos Cálculos</h3>
                     <div id="resultado-container" class="resultado-grid">
                         <p class="empty-state">Preencha os dados e clique em "Calcular Encargos"</p>
                     </div>
@@ -201,8 +283,9 @@
 
             <!-- Aba Cálculo de Rescisão -->
             <section id="tab-rescisao" class="tab-content">
+                <!-- Formulário para cálculo de rescisão -->
                 <section class="rescisao-form">
-                    <h2>Cálculo de Rescisão Trabalhista</h2>
+                    <h2>💼 Cálculo de Rescisão Trabalhista</h2>
                     <form id="rescisaoForm">
                         <div class="funcionario-dados-rescisao">
                             <div class="form-group">
@@ -296,7 +379,7 @@
 
                 <!-- Resultado dos Cálculos de Rescisão -->
                 <section class="resultado-rescisao">
-                    <h3>Resultado dos Cálculos de Rescisão</h3>
+                    <h3>📊 Resultado dos Cálculos de Rescisão</h3>
                     <div id="resultado-rescisao-container" class="resultado-grid">
                         <p class="empty-state">Preencha os dados e clique em "Calcular Rescisão"</p>
                     </div>

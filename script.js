@@ -2435,8 +2435,8 @@ function calcularEncargos() {
         
         <div class="resultado-card total-encargos">
             <h4>💰 TOTAL ENCARGOS MENSAIS</h4>
-            <div class="resultado-valor">R$ ${formatarMoeda(totalEncargos)}</div>
-            <div class="resultado-detalhes">
+            <div class="resultado-valor">
+                R$ ${formatarMoeda(totalEncargos)}<br>
                 Custo total: R$ ${formatarMoeda(custoTotalFuncionario)}<br>
                 Percentual sobre salário: ${((totalEncargos / salarioBruto) * 100).toFixed(1)}%
             </div>
@@ -2473,7 +2473,9 @@ function gerarLancamentos() {
     
     // Adicionar lançamentos automaticamente
     setTimeout(() => {
+        // Lançar salário bruto (crédito e débito para manter o balanceamento)
         adicionarLancamentoEncargos('credito', 'Ordenados e salários a pagar', salarioBrutoStr, `Salário ${nomeFuncionario}`);
+        adicionarLancamentoEncargos('debito', 'Despesas com pessoal', salarioBrutoStr, `Salário ${nomeFuncionario}`);
         
         // Pegar valores calculados dos encargos
         const resultados = document.querySelectorAll('.resultado-card .resultado-valor');
@@ -2483,10 +2485,15 @@ function gerarLancamentos() {
             const decimoValor = resultados[4].textContent.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
             const feriasValor = resultados[5].textContent.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
             
+            // Lançar encargos (apenas crédito, pois são obrigações)
             adicionarLancamentoEncargos('credito', 'INSS a pagar', inssValor, `INSS Patronal ${nomeFuncionario}`);
             adicionarLancamentoEncargos('credito', 'FGTS a recolher', fgtsValor, `FGTS ${nomeFuncionario}`);
             adicionarLancamentoEncargos('credito', '13º a pagar', decimoValor, `Provisão 13º ${nomeFuncionario}`);
             adicionarLancamentoEncargos('credito', 'Ferias a pagar', feriasValor, `Provisão Férias ${nomeFuncionario}`);
+            
+            // Lançar contrapartida dos encargos como despesa
+            const totalEncargos = parseFloat(inssValor) + parseFloat(fgtsValor) + parseFloat(decimoValor) + parseFloat(feriasValor);
+            adicionarLancamentoEncargos('debito', 'Despesas com encargos trabalhistas', totalEncargos.toFixed(2), `Encargos ${nomeFuncionario}`);
         }
         
         sistemaBalancete.calcularBalance();
@@ -2513,7 +2520,14 @@ function adicionarLancamentoEncargos(tipo, conta, valor, descricao) {
         
         // Definir valor
         const valorInput = ultimoLancamento.querySelector('.valor');
-        valorInput.value = valor.toString().replace('.', ',');
+        // Corrigir formatação do valor: se já está no formato monetário brasileiro, manter
+        // se está no formato decimal (ex: 9000.00), converter para formato brasileiro (9000,00)
+        let valorFormatado = valor.toString();
+        if (/^\d+\.?\d*$/.test(valorFormatado)) {
+            // Se é um número simples (ex: 9000.00), substituir apenas o ponto decimal final por vírgula
+            valorFormatado = valorFormatado.replace(/\.(\d{1,2})$/, ',$1');
+        }
+        valorInput.value = valorFormatado;
         
         // Definir descrição
         const descricaoInput = ultimoLancamento.querySelector('.descricao');
@@ -2826,47 +2840,42 @@ function gerarLancamentosRescisao() {
 
     // Adicionar lançamentos principais
     setTimeout(() => {
-        // Saldo de salário
+        // Reconhecer a despesa com rescisão (débito) - totalBruto
+        if (verbas.totalBruto > 0) {
+            adicionarLancamentoEncargos('debito', 'Despesas com rescisão', verbas.totalBruto.toFixed(2), `Verbas rescisórias - ${nome}`);
+        }
+        
+        // Reconhecer as obrigações trabalhistas individuais (créditos) - que somam totalBruto
         if (verbas.saldoSalario > 0) {
             adicionarLancamentoEncargos('credito', 'Saldo de salário a pagar', verbas.saldoSalario.toFixed(2), `Saldo de salário - ${nome}`);
         }
-        // Aviso prévio
         if (verbas.avisoPrevio > 0) {
             adicionarLancamentoEncargos('credito', 'Aviso prévio a pagar', verbas.avisoPrevio.toFixed(2), `Aviso prévio - ${nome}`);
         }
-        // Férias vencidas
         if (verbas.feriasVencidas > 0) {
             adicionarLancamentoEncargos('credito', 'Férias vencidas a pagar', verbas.feriasVencidas.toFixed(2), `Férias vencidas - ${nome}`);
         }
-        // Férias proporcionais
         if (verbas.feriasProporcionais > 0) {
             adicionarLancamentoEncargos('credito', 'Férias proporcionais a pagar', verbas.feriasProporcionais.toFixed(2), `Férias proporcionais - ${nome}`);
         }
-        // 1/3 férias
         if (verbas.tercoFerias > 0) {
             adicionarLancamentoEncargos('credito', '1/3 Férias a pagar', verbas.tercoFerias.toFixed(2), `1/3 férias - ${nome}`);
         }
-        // 13º proporcional
         if (verbas.decimoTerceiro > 0) {
             adicionarLancamentoEncargos('credito', '13º proporcional a pagar', verbas.decimoTerceiro.toFixed(2), `13º proporcional - ${nome}`);
         }
-        // FGTS
+        
+        // FGTS e Multa FGTS - despesas e obrigações separadas
         if (verbas.fgts > 0) {
+            adicionarLancamentoEncargos('debito', 'Despesas com FGTS', verbas.fgts.toFixed(2), `FGTS rescisão - ${nome}`);
             adicionarLancamentoEncargos('credito', 'FGTS a recolher', verbas.fgts.toFixed(2), `FGTS rescisão - ${nome}`);
         }
-        // Multa FGTS
         if (verbas.multaFgts > 0) {
+            adicionarLancamentoEncargos('debito', 'Despesas com multa FGTS', verbas.multaFgts.toFixed(2), `Multa FGTS - ${nome}`);
             adicionarLancamentoEncargos('credito', 'Multa FGTS a recolher', verbas.multaFgts.toFixed(2), `Multa FGTS - ${nome}`);
         }
-        // INSS desconto
-        if (verbas.inssDesconto > 0) {
-            adicionarLancamentoEncargos('debito', 'INSS descontado', verbas.inssDesconto.toFixed(2), `INSS descontado - ${nome}`);
-        }
-        // Total líquido (pagamento ao funcionário)
-        if (verbas.totalLiquido > 0) {
-            adicionarLancamentoEncargos('debito', 'Pagamento rescisão', verbas.totalLiquido.toFixed(2), `Pagamento líquido rescisão - ${nome}`);
-        }
-        // Seguro desemprego (informativo)
+        
+        // Seguro desemprego (informativo - não afeta balanceamento)
         if (seguroDesemprego) {
             adicionarLancamentoEncargos('debito', 'Seguro-desemprego (informativo)', '0.00', `Direito ao seguro-desemprego - ${nome}`);
         }
@@ -3183,4 +3192,294 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Erro crítico na inicialização:', error);
         alert('Erro crítico ao inicializar o sistema: ' + error.message + '\n\nPor favor, recarregue a página.');
     }
+});
+
+// === FUNÇÕES DA ABA DE IMPOSTOS ===
+
+// Sistema para armazenar impostos cadastrados
+let sistemaImpostos = {
+    impostos: [],
+    proximoId: 1,
+
+    salvarImpostos() {
+        try {
+            localStorage.setItem('sistemaImpostos', JSON.stringify({
+                impostos: this.impostos,
+                proximoId: this.proximoId
+            }));
+        } catch (error) {
+            console.error('Erro ao salvar impostos:', error);
+        }
+    },
+
+    carregarImpostos() {
+        try {
+            const dados = localStorage.getItem('sistemaImpostos');
+            if (dados) {
+                const parsed = JSON.parse(dados);
+                this.impostos = parsed.impostos || [];
+                this.proximoId = parsed.proximoId || 1;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar impostos:', error);
+            this.impostos = [];
+            this.proximoId = 1;
+        }
+    },
+
+    adicionarImposto(imposto) {
+        imposto.id = this.proximoId++;
+        imposto.timestamp = new Date().toLocaleString('pt-BR');
+        this.impostos.push(imposto);
+        this.salvarImpostos();
+        this.atualizarHistorico();
+    },
+
+    removerImposto(id) {
+        this.impostos = this.impostos.filter(imp => imp.id !== id);
+        this.salvarImpostos();
+        this.atualizarHistorico();
+    },
+
+    atualizarHistorico() {
+        const container = document.getElementById('historico-impostos-container');
+        if (!container) return;
+
+        if (this.impostos.length === 0) {
+            container.innerHTML = '<p class="empty-state">Nenhum imposto cadastrado ainda.</p>';
+            return;
+        }
+
+        const html = this.impostos.map(imposto => `
+            <div class="imposto-item" style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #f9f9f9;">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                    <h4 style="margin: 0; color: #333;">${imposto.tipo}</h4>
+                    <button onclick="sistemaImpostos.removerImposto(${imposto.id})" style="background: #ff4757; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer;">🗑️</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+                    <div><strong>Valor:</strong> R$ ${sistemaBalancete.formatarMoeda(imposto.valor)}</div>
+                    <div><strong>Competência:</strong> ${imposto.competencia}</div>
+                    <div><strong>Vencimento:</strong> ${new Date(imposto.vencimento).toLocaleDateString('pt-BR')}</div>
+                    <div><strong>Status:</strong> ${imposto.lancado ? '✅ Lançado' : '⏳ Pendente'}</div>
+                </div>
+                ${imposto.descricao ? `<div style="margin-top: 8px; font-style: italic; color: #666;">${imposto.descricao}</div>` : ''}
+                <div style="margin-top: 8px; font-size: 12px; color: #888;">Cadastrado em: ${imposto.timestamp}</div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+};
+
+// Melhorias para o seletor personalizado de impostos
+function inicializarSeletorImpostos() {
+    const select = document.getElementById('tipoImposto');
+    if (!select) return;
+
+    // Adicionar evento para mudança de estilo baseado na seleção
+    select.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const icon = selectedOption.getAttribute('data-icon');
+        const color = selectedOption.getAttribute('data-color');
+        
+        // Atualizar o estilo do select baseado na seleção
+        if (this.value && color) {
+            this.style.borderColor = color;
+            this.style.color = color;
+            
+            // Adicionar um efeito visual suave
+            this.style.boxShadow = `0 0 0 3px ${color}20, 0 4px 15px ${color}40`;
+        } else {
+            // Resetar para o estilo padrão
+            this.style.borderColor = '#e9ecef';
+            this.style.color = '#2c3e50';
+            this.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+        }
+    });
+
+    // Adicionar tooltip com informações do imposto
+    select.addEventListener('mouseenter', function() {
+        if (this.value) {
+            const selectedOption = this.options[this.selectedIndex];
+            this.title = selectedOption.textContent;
+        }
+    });
+}
+
+// Função para obter ícone do imposto
+function obterIconeImposto(tipo) {
+    const icones = {
+        'PIS/PASEP': '🏛️',
+        'COFINS': '🏦',
+        'IRRF': '💰',
+        'IR': '🏛️',
+        'CS': '🏢',
+        'ISS': '🏪',
+        'ICMS': '🚚',
+        'IPI': '🏭',
+        'Outros': '📊'
+    };
+    return icones[tipo] || '📋';
+}
+
+// Função para obter cor do imposto
+function obterCorImposto(tipo) {
+    const cores = {
+        'PIS/PASEP': '#3498db',
+        'COFINS': '#e74c3c',
+        'IRRF': '#f39c12',
+        'IR': '#27ae60',
+        'CS': '#9b59b6',
+        'ISS': '#e67e22',
+        'ICMS': '#1abc9c',
+        'IPI': '#34495e',
+        'Outros': '#95a5a6'
+    };
+    return cores[tipo] || '#667eea';
+}
+
+// Função para calcular imposto
+function calcularImposto() {
+    const tipo = document.getElementById('tipoImposto').value;
+    const valorStr = document.getElementById('valorImposto').value;
+    const competencia = document.getElementById('competenciaImposto').value;
+    const vencimento = document.getElementById('vencimentoImposto').value;
+    const descricao = document.getElementById('descricaoImposto').value;
+
+    if (!tipo || !valorStr || !competencia || !vencimento) {
+        alert('Preencha todos os campos obrigatórios!');
+        return;
+    }
+
+    // Converter valor para número
+    const valorLimpo = valorStr.replace(/[^\d,]/g, '').replace(',', '.');
+    const valor = parseFloat(valorLimpo);
+
+    if (isNaN(valor) || valor <= 0) {
+        alert('Valor inválido!');
+        return;
+    }
+
+    // Mostrar resultado do cálculo com ícone e cor personalizadas
+    const container = document.getElementById('resultado-imposto-container');
+    const competenciaFormatada = competencia.split('-').reverse().join('/');
+    const vencimentoFormatado = new Date(vencimento).toLocaleDateString('pt-BR');
+    const icone = obterIconeImposto(tipo);
+    const cor = obterCorImposto(tipo);
+
+    container.innerHTML = `
+        <div class="resultado-card" style="background: linear-gradient(135deg, ${cor} 0%, ${cor}dd 100%); color: white; padding: 24px; border-radius: 16px; box-shadow: 0 8px 32px ${cor}40; border: 2px solid ${cor}; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.1;">${icone}</div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <span style="font-size: 32px;">${icone}</span>
+                <h4 style="margin: 0; font-size: 20px; font-weight: 600;">${tipo}</h4>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;">
+                <div><strong>Valor:</strong> R$ ${sistemaBalancete.formatarMoeda(valor)}</div>
+                <div><strong>Competência:</strong> ${competenciaFormatada}</div>
+                <div><strong>Vencimento:</strong> ${vencimentoFormatado}</div>
+                <div><strong>Conta Contábil:</strong> ${obterContaImposto(tipo)}</div>
+            </div>
+            ${descricao ? `<div style="margin-top: 12px; font-style: italic;">${descricao}</div>` : ''}
+        </div>
+    `;
+
+    // Habilitar botão de lançamento
+    document.getElementById('btnLancarImposto').disabled = false;
+}
+
+// Função para obter a conta contábil do imposto
+function obterContaImposto(tipo) {
+    const contas = {
+        'PIS/PASEP': 'PIS/PASEP a recolher',
+        'COFINS': 'COFINS a recolher',
+        'IRRF': 'IRRF a compensar',
+        'IR': 'IR a pagar',
+        'CS': 'CS a pagar',
+        'ISS': 'ISS a recolher',
+        'ICMS': 'ICMS a recolher',
+        'IPI': 'IPI a recolher',
+        'Outros': 'Outros impostos e taxas a recolher'
+    };
+    return contas[tipo] || 'Outros impostos e taxas a recolher';
+}
+
+// Função para lançar imposto no balancete
+function lancarImposto() {
+    const tipo = document.getElementById('tipoImposto').value;
+    const valorStr = document.getElementById('valorImposto').value;
+    const competencia = document.getElementById('competenciaImposto').value;
+    const vencimento = document.getElementById('vencimentoImposto').value;
+    const descricao = document.getElementById('descricaoImposto').value;
+
+    if (!tipo || !valorStr || !competencia || !vencimento) {
+        alert('Preencha todos os campos obrigatórios!');
+        return;
+    }
+
+    const valorLimpo = valorStr.replace(/[^\d,]/g, '').replace(',', '.');
+    const valor = parseFloat(valorLimpo);
+
+    if (isNaN(valor) || valor <= 0) {
+        alert('Valor inválido!');
+        return;
+    }
+
+    // Cadastrar o imposto
+    const imposto = {
+        tipo,
+        valor,
+        competencia,
+        vencimento,
+        descricao,
+        lancado: true
+    };
+
+    sistemaImpostos.adicionarImposto(imposto);
+
+    // Mudar para aba do balancete
+    document.querySelector('[data-tab="balancete"]').click();
+
+    // Adicionar lançamentos no balancete
+    setTimeout(() => {
+        const conta = obterContaImposto(tipo);
+        const competenciaFormatada = competencia.split('-').reverse().join('/');
+        const descricaoCompleta = `${tipo} - Competência ${competenciaFormatada}${descricao ? ' - ' + descricao : ''}`;
+
+        // Lançar como despesa (débito) e obrigação (crédito)
+        adicionarLancamentoEncargos('debito', `Despesas com ${tipo}`, valor.toFixed(2), descricaoCompleta);
+        adicionarLancamentoEncargos('credito', conta, valor.toFixed(2), descricaoCompleta);
+
+        sistemaBalancete.calcularBalance();
+        alert(`Imposto ${tipo} lançado com sucesso no balancete!`);
+    }, 100);
+
+    // Limpar formulário
+    limparImpostos();
+}
+
+// Função para limpar formulário de impostos
+function limparImpostos() {
+    document.getElementById('impostosForm').reset();
+    document.getElementById('resultado-imposto-container').innerHTML = '<p class="empty-state">Preencha os dados e clique em "Calcular"</p>';
+    document.getElementById('btnLancarImposto').disabled = true;
+}
+
+// Aplicar máscara de moeda no campo valor e inicializar seletor
+document.addEventListener('DOMContentLoaded', function() {
+    const valorImposto = document.getElementById('valorImposto');
+    if (valorImposto) {
+        valorImposto.addEventListener('input', function() {
+            sistemaBalancete.aplicarMascaraMoeda(this);
+        });
+    }
+    
+    // Inicializar seletor personalizado de impostos
+    inicializarSeletorImpostos();
+});
+
+// Inicializar sistema de impostos quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    sistemaImpostos.carregarImpostos();
+    sistemaImpostos.atualizarHistorico();
 });
